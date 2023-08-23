@@ -6,7 +6,7 @@ const getAllDocuments = async (req, res) => {
     if (!Documents) return res.status(204).json({ 'message': 'No Documents found.' });
     res.json(Documents);
 }
-//
+
 const createNewDocument = async (req, res) => {
     if (!req?.body?.DocumentID || !req?.body?.EmployeeID || !req?.body?.Title || !req?.body?.Description|| !req?.body?.FileUrl) {
         return res.status(400).json({ 'message': 'Input fields are required' });
