@@ -1,102 +1,80 @@
 const Document = require('../models/Document');
-const Employee = require('../models/Employee');
 
-//commit
-const documentController = {
-  // Create a new document for an employee
-  createDocument: async (req, res) => {
-    try {
-      const { title, fileURL, uploadDate, employeeId } = req.body;
-      
-      // Check if the employee exists
-      const employee = await Employee.findById(employeeId);
-      if (!employee) {
-        return res.status(404).send({ error: 'Employee not found' });
-      }
 
-      const documentData = {
-        title,
-        fileURL,
-        uploadDate,
-        employee: employeeId
-      };
+const getAllDocuments = async (req, res) => {
+    const Documents = await Document.find();
+    if (!Documents) return res.status(204).json({ 'message': 'No Documents found.' });
+    res.json(Documents);
+}
 
-      const document = new Document(documentData);
-      await document.save();
-
-      // Add the document to the employee's documents array
-      employee.documents.push(document._id);
-      await employee.save();
-
-      res.status(201).send(document);
-    } catch (error) {
-      res.status(400).send({ error: error.message });
+const createNewDocument = async (req, res) => {
+    if (!req?.body?.DocumentID || !req?.body?.EmployeeID || !req?.body?.Title || !req?.body?.Description|| !req?.body?.FileUrl) {
+        return res.status(400).json({ 'message': 'Input fields are required' });
     }
-  },
-
-  // Get all documents for an employee
-  getAllDocumentsForEmployee: async (req, res) => {
-    const employeeId = req.params.employeeId;
-
     try {
-      const documents = await Document.find({ employee: employeeId });
-      res.status(200).send(documents);
+        const date = new Date()
+        const result = await Document.create({
+            DocumentID: req.body.DocumentID,
+            EmployeeID: req.body.EmployeeID,
+            Title: req.body.Title,
+            Description: req.body.Description,
+            UploadDate: Date.now(),
+            FileUrl: req.body.FileUrl
+        });
+
+        res.status(201).json(result);
     } catch (error) {
-      res.status(500).send({ error: 'Server Error' });
+        res.status(500).json({message: error.message});
+
     }
-  },
+}
 
-  // Get document by ID
-  getDocumentById: async (req, res) => {
-    const id = req.params.id;
-
-    try {
-      const document = await Document.findById(id);
-      if (!document) {
-        return res.status(404).send({ error: 'Document not found' });
-      }
-      res.status(200).send(document);
-    } catch (error) {
-      res.status(500).send({ error: 'Server Error' });
+const updateDocument = async (req, res) => {
+    if (!req?.body?.DocumentID) {
+        return res.status(400).json({ 'message': 'DocumentID parameter is required.' });
     }
-  },
+    // const Updates = Object.keys(req.body);
+    const document = await Document.findOne({ DocumentID: req.body.DocumentID }).exec();
 
-  // Update document by ID
-  updateDocument: async (req, res) => {
-    try {
-      const id = req.params.id;
-      const updates = req.body;
-
-      const document = await Document.findByIdAndUpdate(id, updates, {
-        new: true,
-        runValidators: true
-      });
-
-      if (!document) {
-        return res.status(404).send({ error: 'Document not found' });
-      }
-
-      res.status(200).send(document);
-    } catch (error) {
-      res.status(400).send({ error: error.message });
+    if (!document) {
+        return res.status(404).json({ "message": `No Document matches ID ${req.body.DocumentID}.` });
     }
-  },
 
-  // Delete document by ID
-  deleteDocument: async (req, res) => {
-    try {
-      const id = req.params.id;
-      const document = await Document.findByIdAndDelete(id);
+    if (req.body?.DocumentID) document.DocumentID = req.body.DocumentID;
+    if (req.body?.EmployeeID) document.EmployeeID = req.body.EmployeeID;
+    if (req.body?.Description) document.Title = req.body.Title;
+    if (req.body?.Description) document.Description = req.body.Description;
+    if (req.body?.FileUrl) document.FileUrl = req.body.FileUrl;
+    const result = await document.save();
 
-      if (!document) {
-        return res.status(404).send({ error: 'Document not found' });
-      }
+    res.json(result);
+}
 
-      res.status(200).send(document);
-    } catch (error) {
-      res.status(500).send({ error: 'Server Error' });
+const deleteDocument = async (req, res) => {
+    if (!req?.body?.DocumentID) return res.status(400).json({ 'message': 'DocumentID required.' });
+
+    const document = await Document.findOne({ DocumentID: req.body.DocumentID }).exec();
+    if (!document) {
+        return res.status(204).json({ "message": `No Document matches ID ${req.body.DocumentID}.` });
     }
-  }
-};
+    const result = await document.deleteOne(); //{ _id: req.body.id }
+    res.json(result);
+}
 
-module.exports = documentController;
+const getDocument = async (req, res) => {
+    if (!req?.params?.id) return res.status(400).json({ 'message': 'DocumentID required.' });
+
+    const document = await Document.findOne({ DocumentID: req.params.id }).exec();
+    if (!document) {
+        return res.status(204).json({ "message": `No Document matches ID ${req.params.id}.` });
+    }
+    res.json(document);
+}
+
+module.exports = {
+    getAllDocuments,
+    createNewDocument,
+    updateDocument,
+    deleteDocument,
+    getDocument
+}
