@@ -1,6 +1,5 @@
 const Attendance = require('../models/Attendance');
 
-
 const getAllAttendances = async (req, res) => {
     const Attendances = await Attendance.find();
     if (!Attendances) return res.status(204).json({ 'message': 'No Attendances found.' });
@@ -8,10 +7,10 @@ const getAllAttendances = async (req, res) => {
 }
 
 const createNewAttendance = async (req, res) => {
-
     if (!req?.body?.AttendanceID || !req?.body?.EmployeeID || !req?.body?.CheckInDateTime || !req?.body?.CheckOutDateTime) {
-        return res.status(400).json({ 'message': 'Input fields are required' });
+        return res.status(400).json({ 'message': 'Check the required input fields.' });
     }
+
     try {
         const result = await Attendance.create({
             AttendanceID: req.body.AttendanceID,
@@ -26,7 +25,6 @@ const createNewAttendance = async (req, res) => {
 
     }
 }
-
 
 const updateAttendance = async (req, res) => {
     if (!req?.body?.AttendanceID) {
@@ -50,7 +48,7 @@ const deleteAttendance = async (req, res) => {
     if (!req?.body?.AttendanceID) return res.status(400).json({ 'message': 'AttendanceID required.' });
 
     const attendance = await Attendance.findOne({ AttendanceID: req.body.AttendanceID }).exec();
-    if (!Attendance) {
+    if (!attendance) {
         return res.status(204).json({ "message": `No Attendance matches ID ${req.body.AttendanceID}.` });
     }
     const result = await Attendance.deleteOne(); //{ _id: req.body.id }
