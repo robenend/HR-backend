@@ -3,26 +3,25 @@ const bcrypt = require('bcryptjs')
 require('./db/mongoose')
 const cors = require('cors');
 
-const employeeRouter = require('./routers/employee')
-const positionRouter = require('./routers/position')
-const recruitmentRouter = require('./routers/recruitment')
-const otherRouter = require('./routers/other')
-const fileRouter = require('./routers/fileUpload')
+const employeeRouter = require('./routes/employee')
+const positionRouter = require('./routes/position')
+const recruitmentRouter = require('./routes/recruitment')
+const otherRouter = require('./routes/other')
+const fileRouter = require('./routes/fileUpload')
 const requestLogger = require('./middleware/requestLogger') 
-
+const authRouter = require('./routes/auth')
 
 const app = express()
 
 app.use(requestLogger)
 app.use(cors());
 
- const port = process.env.port || 3500
+ const port = process.env.port || 5000;
  app.use(
    express.urlencoded({ extended: true })
 );
 
 app.use(express.json())
-
 
 
 // app.use(userRouter)
@@ -31,8 +30,8 @@ app.use(positionRouter)
 app.use(recruitmentRouter)
 app.use(otherRouter)
 app.use(fileRouter)
-
- app.listen(port , ()=>{
+app.use(authRouter)
+app.listen(port , ()=>{
     console.log(`running at ${port}`)
  })
 
