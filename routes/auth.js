@@ -3,9 +3,8 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const auth = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
-// const config = require('config');
 const { check, validationResult } = require('express-validator');
-
+require('dotenv').config();
 // const User = require('../models/User');
 const Employee = require('../models/Employee');
 // @route    GET api/auth
@@ -46,7 +45,7 @@ router.post(
           .json({ errors: [{ msg: 'Invalid Credentials' }] });
       }
 
-      return res.status(200).json({message: "success"});
+      // return res.status(200).json({message: "success"});
 
       // const isMatch = await bcrypt.compare(Password, user.password);
 
@@ -71,6 +70,7 @@ router.post(
           res.json({ token });
         }
       );
+
     } catch (err) {
       console.error(err);
       res.status(500).send('Server error');

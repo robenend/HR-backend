@@ -23,7 +23,6 @@ app.use(cors());
 
 app.use(express.json())
 
-
 // app.use(userRouter)
 app.use(employeeRouter)
 app.use(positionRouter)
