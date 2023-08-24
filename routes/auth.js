@@ -35,17 +35,17 @@ router.post(
     }
 
     const { EmployeeID, Password } = req.body;
-    console.log(req.body)
+    // console.log(EmployeeID)
 
     try {
-      let user = await Employee.findOne({ EmployeeID });
-      // if (!user) {
-      //   return res
-      //     .status(400)
-      //     .json({ errors: [{ msg: 'Invalid Credentials' }] });
-      // }
+      let user = await Employee.findOne({employeeID: EmployeeID })
 
-      console.log(user)
+      if (!user) {
+        return res
+          .status(400)
+          .json({ errors: [{ msg: 'Invalid Credentials' }] });
+      }
+
       return res.status(200).json({message: "success"});
 
       // const isMatch = await bcrypt.compare(Password, user.password);
@@ -56,21 +56,21 @@ router.post(
       //     .json({ errors: [{ msg: 'Invalid Credentials' }] });
       // }
 
-      // const payload = {
-      //   user: {
-      //     id: user.id
-      //   }
-      // };
+      const payload = {
+        user: {
+          id: user.id
+        }
+      };
 
-      // jwt.sign(
-      //   payload,
-      //   config.get('jwtSecret'),
-      //   { expiresIn: '5 days' },
-      //   (err, token) => {
-      //     if (err) throw err;
-      //     res.json({ token });
-      //   }
-      // );
+      jwt.sign(
+        payload,
+        config.get('jwtSecret'),
+        { expiresIn: '5 days' },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
     } catch (err) {
       console.error(err);
       res.status(500).send('Server error');
