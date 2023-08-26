@@ -1,5 +1,5 @@
 const Payroll = require('../models/Payroll');
-
+const Attendance = require("../models/Attendance")
 
 const getAllPayrolls = async (req, res) => {
     const Payrolls = await Payroll.find();
@@ -8,21 +8,45 @@ const getAllPayrolls = async (req, res) => {
 }
 
 const createNewPayroll = async (req, res) => {
-    if (!req?.body?.PayrollID || !req?.body?.EmployeeID || !req?.body?.Salary || !req?.body?.PeriodStartDate || !req?.body?.PeriodEndDate || !req?.body?.BasicSalary || !req?.body?.Allowance|| !req?.body?.Deduction || !req?.body?.NetSalary) {
+    if (!req?.body?.PayrollID || !req?.body?.EmployeeID || !req?.body?.PeriodStartDate || !req?.body?.PeriodEndDate || !req?.body?.BasicSalary || !req?.body?.Allowance || !req?.body?.NetSalary) {
         return res.status(400).json({ 'message': 'Input fields are required' });
     }
+    
     try {
+        const attendanceRecords = await Attendance.find({employeeID: req.body.EmployeeID}).exec();
+
+        async function  calculateAbsences(attendanceRecords) {
+            let absences = 0;
+          
+            for (const record of attendanceRecords) {
+              if (!record.CheckInDateTime || !record.CheckOutDateTime) {
+                absences++;
+              }
+            }
+          
+            return absences;
+          }
+
+        const numberOfAbsences = await calculateAbsences(attendanceRecords);
+        console.log('Number of absences:', numberOfAbsences);
+
+        const salaryPerDay = req.body.BasicSalary / 30;
+        const deduction = salaryPerDay * absences;
+        const salary = req.body.Salary + req.body.Allowance - deduction;
+
+        
         const result = await Payroll.create({
             PayrollID: req.body.PayrollID,
             EmployeeID: req.body.EmployeeID,
-            Salary: req.body.Salary,
+            Salary: salary,
             PeriodStartDate: req.body.PeriodStartDate,
             PeriodEndDate: req.body.PeriodEndDate,
             BasicSalary: req.body.BasicSalary,
             Allowance: req.body.Allowance,
-            Deduction: req.body.Deduction,
-            NetSalary: req.body.NetSalary,
+            Deduction: deduction,
+            NetSalary: salary,
         });
+
 
         res.status(201).json(result);
     } catch (error) {
@@ -53,9 +77,6 @@ const updatePayroll = async (req, res) => {
     if (req.body?.Deduction) payroll.Deduction = req.body.Deduction;
     if (req.body?.NetSalary) payroll.NetSalary = req.body.NetSalary;
 
-    // Updates.forEach(update => {
-    //    Payroll[update] = Updates[update];
-    // });
     
     const result = await payroll.save();
     res.json(result);

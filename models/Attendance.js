@@ -2,23 +2,23 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const AttendanceSchema = new Schema({
-    AttendanceID: {
+    attendanceID: {
         type: String,
         required: true,
         unique: true
     },
 
-    EmployeeID: {
+    employeeID: {
         type: String,
         ref: 'Employee',
         required: true
     },
 
-    CheckInDateTime: {
+    checkInDateTime: {
         type: Date,
         required: true
     },
-    CheckOutDateTime: {
+    checkOutDateTime: {
         type: Date,
         required: true
     }

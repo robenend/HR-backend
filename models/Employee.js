@@ -8,6 +8,10 @@ const employeeSchema = new mongoose.Schema({
   dateOfBirth: { type: Date, validate: { validator: date => date <= new Date(), message: 'Invalid date of birth' } },
   gender: { type: String, set: (value) => value.toLowerCase(), enum: ['male', 'female'] },
   contactNumber: { type: String, match: /^\d{10}$/, trim: true },
+  role: {
+   type: String,
+   default: "user"
+  },
   email: {
     type: String,
     required: true, 
@@ -20,6 +24,10 @@ const employeeSchema = new mongoose.Schema({
     },
     set: (value) => value.toLowerCase(),
   },
+  password: {
+    type: String,
+    required: true
+  },
   employmentStatus: { type: String, set: (value) => value.toLowerCase(), enum: ['full-time', 'part-time', 'contract'] },
   documents: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -29,6 +37,7 @@ const employeeSchema = new mongoose.Schema({
   performanceRating: { type: Number, min: 0, max: 10 },
   joinDate: { type: Date, default: Date.now },
   currentSalary: { type: Number, min: 0 },
+  refreshToken: String
 });
 
 const Employee = mongoose.model('Employee', employeeSchema);
