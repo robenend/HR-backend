@@ -1,4 +1,4 @@
-const Department = require("../models/department");
+const Department = require("../models/Department");
 
 const getAllDepartment = async (req, res) => {
   const department = await Department.find();
@@ -7,78 +7,68 @@ const getAllDepartment = async (req, res) => {
   res.json(department);
 };
 
+
 const createNewDepartment = async (req, res) => {
-  console.log(req.body);
-  if (
-    // !req?.body?.DepartmentID ||a
-    !req?.body?.DepartmentName ||
-    !req?.body?.Description
-  ) {
+  if (!req?.body?.departmentName || !req?.body?.description) {
     return res.status(400).json({ message: "Input fields are required" });
   }
-  try {
-    const result = await Department.create({
-      DepartmentID: req.body.DepartmentID,
-      DepartmentName: req.body.DepartmentName,
-      Description: req.body.Description,
-    });
+  const {departmentName, description} = req.body
 
+  try {
+    const result = await Department.create({departmentName, description});
     res.status(201).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+
 const updateDepartment = async (req, res) => {
-  if (!req?.body?.DepartmentName) {
-    return res
-      .status(400)
-      .json({ message: "Department Name parameter is required." });
+  if (!req?.body?._id) {
+    return res.status(400).json({ message: "department _id is required." });
   }
 
-  const Dept = await Department.findOne({
-    DepartmentName: req.body.DepartmentName,
-  }).exec();
-  if (!Dept) {
-    return res
-      .status(r)
-      .json({ message: `No course matches ID ${req.body.DepartmentName}.` });
+  const {departmentName, description} = req.body;
+
+  const department = await Department.findOne({_id: req.body._id}).exec();
+
+  if (!department) {
+    return res.status(204).json({ message: `No department matches _id ${department}.` });
   }
 
-  if (req.body?.DepartmentName) Dept.DepartmentName = req.body.DepartmentName;
-  if (req.body?.Description) Dept.Description = req.body.Description;
-  // if (req.body?.NewCourseID) Dept.CourseID = req.body.NewCourseID;
-  const result = await Dept.save();
-  res.json(result);
+  let result = await Department.updateOne(
+    { _id: req.body._id },
+    { $set: {departmentName, description} }
+  )
+
+  res.status(200).json(result);
 };
+
 
 const deleteDepartment = async (req, res) => {
-  if (!req?.body?.DepartmentName)
-    return res.status(400).json({ message: "Department Name required." });
+  if (!req?.body?._id)
+    return res.status(400).json({ message: "Department _id required." });
 
-  const Dept = await Department.findOne({
-    DepartmentName: req.body.DepartmentName,
-  }).exec();
-  if (!Dept) {
-    return res
-      .status(204)
-      .json({ message: `No Course matches ID ${req.body.DepartmentName}.` });
+  const department = await Department.findOne({_id: req.body._id}).exec();
+  if (!department) {
+    return res.status(204).json({ message: `No Department matches _id ${req.body._id}.` });
   }
-  const result = await Dept.deleteOne(); //{ _id: req.body.id }
-  res.json(result);
+
+  const result = await department.deleteOne(); //{ _id: req.body.id }
+  res.status(200).json(result);
 };
 
-const getDepartment = async (req, res) => {
-  if (!req?.params?.id)
-    return res.status(400).json({ message: "Department required." });
 
-  const Dept = await Department.findOne({ DepartmentID: req.params.id }).exec();
-  if (!Dept) {
-    return res
-      .status(204)
-      .json({ message: `No Departments matches ID ${req.params.id}.` });
+const getDepartment = async (req, res) => {
+  if (!req?.body?._id)
+    return res.status(400).json({ message: "Department _id required." });
+
+  const department = await Department.findOne({ _id: req.body._id }).exec();
+
+  if (!department) {
+    return res.status(204).json({ message: `No Department matches _id ${req.body._id}.` });
   }
-  res.json(Dept);
+  res.status(200).json(department);
 };
 
 module.exports = {

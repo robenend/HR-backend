@@ -2,19 +2,14 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const RankSchema = new Schema({
-  RankId: {
-    type: Number,
-    required: true,
-    unique: true,
+  positionID: {
+    type: String,
+    ref: "Position",
+    required: [true, "Position ID is required."],
   },
-  PositionId: {
-    type: Number,
-    ref: "PositionID",
-    required: false,
-  },
-  HistoryId: {
-    type: Number,
-    ref: "HistoryID",
+  historyID: {
+    type: String,
+    ref: "History",
     required: false,
   },
 });

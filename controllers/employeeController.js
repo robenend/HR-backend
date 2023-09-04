@@ -1,22 +1,82 @@
 const { validationResult } = require('express-validator');
 const Employee = require('../models/Employee');
-const Position = require('../models/Position');
+// const Position = require('../models/Position');
 const Recruitment = require('../models/Recruitment');
-const Department = require('../models/department');
+// const Department = require('../models/Department');
 const Document = require('../models/Document');
+const Rank = require('../models/Rank');
+const inputValidator = require('../helpers/inputValidator');
+const Joi = require('joi');
+
 
 const employeeController = {
   // Create a new employee
   createEmployee: async (req, res) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+
+      const schema = Joi.object({
+        employeeID: Joi.string().required(),
+        firstName: Joi.string().required(),
+        lastName: Joi.string().required(),
+        dateOfBirth: Joi.date().required(),
+        gender: Joi.string().required(),
+        contactNumber: Joi.string().required(),
+        role: Joi.string().required(),
+        email: Joi.string().email().required(),
+        password: Joi.string().required(),
+        employmentStatus: Joi.string().required(),
+        rankID: Joi.string().required(),
+        documents: Joi.array().items(Joi.string()),
+        performanceRating: Joi.number().required(),
+      });
+      
+      const { error, value } = schema.validate(req.body, { abortEarly: false });
+      
+      // check for duplicate employeeID in the db
+      const duplicate = await Employee.findOne({employeeID: value.employeeID }).exec();
+      if (duplicate) return res.sendStatus(409); //Conflict 
+         
+      if (error) {
+        return res.status(400).send({ message: error.details[0].message });
       }
 
-      const employeeData = req.body;
-      const employee = new Employee(employeeData);
+      if(!mongoose.Types.ObjectId.isValid(value.rankID)){
+        return res.status(400).json({ message : 'Invalid rankID'})
+      }
+
+      if (value.documents && Array.isArray(value.documents)) {
+        for (const document of documents) {
+          if (!mongoose.Types.ObjectId.isValid(document)) {
+            return res.status(400).json({ message: 'Invalid document' });
+          }
+        }
+      }
+
+      if(inputValidator.validateName(value.firstName)){
+
+        return res.status(400).json({ message: 'Invalid first name' });
+      }
+
+      if (inputValidator.validateName(value.lastName)){
+        return res.status(400).json({ message: 'Invalid last name' });
+
+      }
+      
+      if(inputValidator.validateContactNumber(value.contactNumber)){
+        return res.status(400).json({messge: 'Invalid contact Number.'})
+      }
+
+      if(inputValidator.validateEmail(value.email)){
+        return res.status(400).json({messge: 'Invalid Email'})
+      }
+
+      //encrypt the password
+      const hashedPwd = await bcrypt.hash(password, 10);
+      value.password = hashedPwd;
+
+      const employee = new Employee(value);
       await employee.save();
+
       res.status(201).send(employee);
     } catch (error) {
       console.log(error)
@@ -60,22 +120,67 @@ const employeeController = {
   // Update employee by ID
   updateEmployee: async (req, res) => {
     try {
-      const id = req.params.id;
-      const updates = Object.keys(req.body);
-      const allowedUpdates = ['firstName', 'lastName', 'email', 'positionID'];
-      const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
-      if (!isValidOperation) {
-        return res.status(400).send({ error: 'Invalid updates' });
-      }
+      const schema = Joi.object({
+        employeeID: Joi.string(),
+        firstName: Joi.string(),
+        lastName: Joi.string(),
+        dateOfBirth: Joi.date(),
+        gender: Joi.string(),
+        contactNumber: Joi.string(),
+        role: Joi.string(),
+        email: Joi.string().email(),
+        password: Joi.string(),
+        employmentStatus: Joi.string(),
+        rankID: Joi.string(),
+        documents: Joi.array().items(Joi.string()),
+        performanceRating: Joi.number(),
+      }).min(1);
 
+      const id = req.body._id;
       const employee = await Employee.findById(id);
       if (!employee) {
         return res.status(404).send({ error: 'Employee not found' });
       }
 
+      const { error, value } = schema.validate(req.body, { abortEarly: false });
+      
+      if (error) {
+        return res.status(400).send({ message: error.details[0].message });
+      }
+
+      if(value.rankID && !mongoose.Types.ObjectId.isValid(value.rankID)){
+        return res.status(400).json({ message : 'Invalid rankID'})
+      }
+
+      if (value.documents && Array.isArray(value.documents)) {
+        for (const document of documents) {
+          if (!mongoose.Types.ObjectId.isValid(document)) {
+            return res.status(400).json({ message: 'Invalid document' });
+          }
+        }
+      }
+
+      if(value.firstName && inputValidator.validateName(value.firstName)){
+        return res.status(400).json({ message: 'Invalid first name' });
+      }
+
+      if (inputValidator.validateName(value.lastName)){
+        return res.status(400).json({ message: 'Invalid last name' });
+
+      }
+      
+      if(value.contactNumber && inputValidator.validateContactNumber(value.contactNumber)){
+        return res.status(400).json({messge: 'Invalid contact Number.'})
+      }
+
+      if(value.email && inputValidator.validateEmail(value.email)){
+        return res.status(400).json({messge: 'Invalid Email'})
+      }
+
+
       updates.forEach(update => {
-        employee[update] = req.body[update];
+        employee[update] = value[update];
       });
 
       await employee.save();
@@ -89,7 +194,7 @@ const employeeController = {
   // Delete employee by ID
   deleteEmployee: async (req, res) => {
     try {
-      const id = req.params.id;
+      const id = req.body._id;
       const employee = await Employee.findByIdAndDelete(id);
 
       if (!employee) {
@@ -104,7 +209,7 @@ const employeeController = {
 
   // Get employee's rank information
   getRankForEmployee: async (req, res) => {
-    const employeeId = req.params.id;
+    const employeeId = req.body._id;
 
     try {
       const employee = await Employee.findById(employeeId).populate('rankID');
@@ -123,66 +228,10 @@ const employeeController = {
     }
   },
 
-  // Get employee's position information
-  getPositionForEmployee: async (req, res) => {
-    const employeeId = req.params.id;
-
-    try {
-      const employee = await Employee.findById(employeeId).populate('rankID');
-      if (!employee) {
-        return res.status(404).send({ error: 'Employee not found' });
-      }
-
-      const rank = await Rank.findById(employee.rankID);
-      if (!rank) {
-        return res.status(404).send({ error: 'Rank not found' });
-      }
-
-      const position = await Position.findById(rank.PositionId);
-      if (!position) {
-        return res.status(404).send({ error: 'Position not found' });
-      }
-
-      res.status(200).send(position);
-    } catch (error) {
-      res.status(500).send({ error: 'Server Error' });
-    }
-  },
-
-   // Update employee's position
-  updatePositionForEmployee: async (req, res) => {
-    const employeeId = req.params.id;
-    const { positionId } = req.body;
-
-    try {
-      const employee = await Employee.findById(employeeId);
-      if (!employee) {
-        return res.status(404).send({ error: 'Employee not found' });
-      }
-
-      const position = await Position.findById(positionId);
-      if (!position) {
-        return res.status(404).send({ error: 'Position not found' });
-      }
-
-      const rank = await Rank.findOne({ PositionId: positionId });
-      if (!rank) {
-        return res.status(404).send({ error: 'Rank not found for the given position' });
-      }
-
-      employee.positionID = positionId;
-      await employee.save();
-
-      res.status(200).send({ message: 'Position updated successfully' });
-    } catch (error) {
-      res.status(500).send({ error: 'Server Error' });
-    }
-  },  
-
   // Get employee's recruitment information
   getRecruitmentForEmployee: async (req, res) => {
     try {
-      const employeeId = req.params.id;
+      const employeeId = req.body._id;
       const employee = await Employee.findById(employeeId);
 
       if (!employee) {
@@ -241,6 +290,7 @@ const employeeController = {
       res.status(500).send({ error: 'Server Error' });
     }
   },
+  
   // Delete a document by passing employee ID and document ID
   deleteDocumentByEmployeeAndDocumentId: async (req, res) => {
     try {

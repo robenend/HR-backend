@@ -1,89 +1,145 @@
 const Rank = require("../models/Rank");
-
-const getAllRank = async (req, res) => {
-  const rank = await Rank.find();
-  if (!rank) return res.status(204).json({ message: "No Ranks found." });
-  res.json(rank);
-};
+const Position = require("../models/Position");
+const History = require("../models/History");
+const Joi = require('joi');
 
 const createNewRank = async (req, res) => {
   //console.log(req.body);
-  if (
-    // !req?.body?.DepartmentID ||a
-    !req?.body?.DepartmentName ||
-    !req?.body?.Description
-  ) {
-    return res.status(400).json({ message: "Input fields are required" });
-  }
   try {
-    const result = await Department.create({
-      DepartmentID: req.body.DepartmentID,
-      DepartmentName: req.body.DepartmentName,
-      Description: req.body.Description,
+    // Validate the request body
+    const schema = Joi.object({
+      positionID: Joi.string().required().label('Position ID'),
+      historyID: Joi.string().allow(null).empty('').label('History ID'),
     });
 
-    res.status(201).json(result);
+    const { error, value } = schema.validate(req.body, { abortEarly: false });
+
+    if (error) {
+      const errorMessage = error.details.map((detail) => detail.message).join('; ');
+      return res.status(400).json({ message: errorMessage });
+    }
+
+    // Check if the position exists
+    const position = await Position.findById(value.positionID);
+    if (!position) {
+      return res.status(404).json({ message: 'Position not found.' });
+    }
+
+    if (value.historyID) {
+    // Check if the history exists
+    const history = await History.findById(value.historyID);
+      return res.status(404).json({ message: 'History not found.' });
+    }
+
+    // Create a new rank document
+    const newRank = new Rank(value);
+
+    // Save the new rank document
+    const createdRank = await newRank.save();
+
+    res.status(201).json(createdRank);
+  } catch (error) { 
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateRank = async (req, res) => {
+  try {
+    // Validate the request body
+    const rankID = req.body._id;
+    const rank = await Rank.findById(rankID);
+
+    if (!rank) {
+      return res.status(404).json({ message: 'Rank not found.' });
+    }
+
+    const schema = Joi.object({
+      rankID: Joi.string(),
+      positionID: Joi.string()
+    });
+
+    const { error, value } = schema.validate(req.body, { abortEarly: false });
+
+    if (error) {
+      const errorMessage = error.details.map((detail) => detail.message).join('; ');
+      return res.status(400).json({ message: errorMessage });
+    }
+
+    // Check if the position exists
+    if (value.rankID) {
+      const rank = await Rank.findById(value.rankID);
+      if(!rank)
+        return res.status(404).json({ message: 'Rank not found.' });
+    }
+
+    if (value.positionID) {
+      const position = await Position.findById(value.positionID);
+
+      if(!position)
+        return res.status(404).json({ message: 'Position not found.' });
+    }
+
+    // Update the rank document with the new positionID
+    Object.assign(rank, value);
+
+    res.status(200).json(rank);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+
+}
+
+const deleteRank = async (req, res) => {
+  try {
+    const rankID = req.body._id;
+
+    // Find the rank document and delete it
+    const deletedRank = await Rank.findByIdAndDelete(rankID);
+
+    if (!deletedRank) {
+      return res.status(404).json({ message: 'Rank not found.' });
+    }
+
+    res.json({ message: 'Rank deleted successfully.' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-const updateDepartment = async (req, res) => {
-  if (!req?.body?.DepartmentName) {
-    return res
-      .status(400)
-      .json({ message: "Department Name parameter is required." });
-  }
+const getRankByID = async (req, res) => {
+  try {
+    const rankID = req.body._id;
 
-  const Dept = await Department.findOne({
-    DepartmentName: req.body.DepartmentName,
-  }).exec();
-  if (!Dept) {
-    return res
-      .status(r)
-      .json({ message: `No course matches ID ${req.body.DepartmentName}.` });
-  }
+    // Find the rank document by ID
+    const rank = await Rank.findById(rankID);
 
-  if (req.body?.DepartmentName) Dept.DepartmentName = req.body.DepartmentName;
-  if (req.body?.Description) Dept.Description = req.body.Description;
-  // if (req.body?.NewCourseID) Dept.CourseID = req.body.NewCourseID;
-  const result = await Dept.save();
-  res.json(result);
+    if (!rank) {
+      return res.status(404).json({ message: 'Rank not found.' });
+    }
+
+    res.status(200).json(rank);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-const deleteDepartment = async (req, res) => {
-  if (!req?.body?.DepartmentName)
-    return res.status(400).json({ message: "Department Name required." });
+const getAllRanks = async (req, res) => {
+  try {
+    // Fetch all ranks
+    const ranks = await Rank.find();
+    res.status(200).json(ranks);
 
-  const Dept = await Department.findOne({
-    DepartmentName: req.body.DepartmentName,
-  }).exec();
-  if (!Dept) {
-    return res
-      .status(204)
-      .json({ message: `No Course matches ID ${req.body.DepartmentName}.` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-  const result = await Dept.deleteOne(); //{ _id: req.body.id }
-  res.json(result);
-};
-
-const getDepartment = async (req, res) => {
-  if (!req?.params?.id)
-    return res.status(400).json({ message: "Department required." });
-
-  const Dept = await Department.findOne({ DepartmentID: req.params.id }).exec();
-  if (!Dept) {
-    return res
-      .status(204)
-      .json({ message: `No Departments matches ID ${req.params.id}.` });
-  }
-  res.json(Dept);
 };
 
 module.exports = {
-  getAllDepartment,
-  createNewDepartment,
-  updateDepartment,
-  deleteDepartment,
-  getDepartment,
+  getRankByID,
+  createNewRank,
+  updateRank,
+  deleteRank,
+  getAllRanks,
 };

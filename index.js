@@ -1,6 +1,6 @@
 const express = require('express')
 const bcrypt = require('bcryptjs')
-require('./db/mongoose')
+require('./db/dbConfig')
 const cors = require('cors');
 const corsOptions = require('./config/corsOptions');
 const employeeRouter = require('./routes/employee')

@@ -1,15 +1,55 @@
+const Joi = require('joi');
 const Recruitment = require('../models/Recruitment');
+const Position = require('../models/Position');
+const Employee = require('../models/Employee');
+const Joi = require('joi');
+
 
 const recruitmentController = {
   // Create a new recruitment
   createRecruitment: async (req, res) => {
     try {
-      const recruitmentData = req.body;
-      const recruitment = new Recruitment(recruitmentData);
-      await recruitment.save();
-      res.status(201).send(recruitment);
+      // Define a Joi schema for validation
+      const schema = Joi.object({
+        positionID: Joi.string().required(),
+        hiringManagerID: Joi.string().required(),
+        jobTitle: Joi.string().required(),
+        jobDescription: Joi.string(),
+        requiredSkills: Joi.array().items(Joi.string()),
+        status: Joi.string().valid('Open', 'Closed').required(),
+        applicationDeadline: Joi.date().required(),
+        hiredEmployeeID: Joi.string().allow(null).empty(''),
+      });
+  
+      // Validate the request body against the schema
+      const { error, value } = schema.validate(req.body, { abortEarly: false });
+  
+      if (error) {
+        const errorMessage = error.details.map((detail) => detail.message).join('; ');
+        return res.status(400).json({ message: errorMessage });
+      }
+  
+      // Check if the position exists
+      const position = await Position.findById(value.positionID);
+  
+      if (!position) {
+        return res.status(404).json({ message: 'Position not found' });
+      }
+  
+     // Check if the hiring manager exists
+      const hiringManager = await Employee.findById(value.hiringManagerID);
+
+      if (!hiringManager) {
+        return res.status(404).json({ message: 'Hiring manager not found' });
+      
+      }
+      // Create a new recruitment
+      const recruitment = new Recruitment(value);
+  
+      const savedRecruitment = await recruitment.save();
+      res.status(201).json(savedRecruitment);
     } catch (error) {
-      res.status(400).send({ error: error.message });
+      res.status(500).json({ message: error.message });
     }
   },
 
@@ -25,7 +65,7 @@ const recruitmentController = {
 
   // Get recruitment by ID
   getRecruitmentById: async (req, res) => {
-    const id = req.params.id;
+    const id = req.body._id;
 
     try {
       const recruitment = await Recruitment.findById(id);
@@ -41,37 +81,65 @@ const recruitmentController = {
   // Update recruitment by ID
   updateRecruitment: async (req, res) => {
     try {
-      const id = req.params.id;
-      const updates = Object.keys(req.body);
 
-      const allowedUpdates = ['positionID', 'hiringManagerID', 'jobTitle', 'jobDescription', 'requiredSkills', 'status', 'applicationDeadline'];
-      const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-
-      if (!isValidOperation) {
-        return res.status(400).send({ error: 'Invalid updates' });
-      }
-
-      const recruitment = await Recruitment.findById(id);
-
-      if (!recruitment) {
-        return res.status(404).send({ error: 'Recruitment not found' });
-      }
-
-      updates.forEach(update => {
-        recruitment[update] = req.body[update];
+      const recruitmentId = req.body._id;  
+      
+       // Find the recruitment by ID
+       const recruitment = await Recruitment.findById(recruitmentId);
+  
+       if (!recruitment) {
+         return res.status(404).json({ message: 'Recruitment not found' });
+       }
+      // Define a Joi schema for validation
+      const schema = Joi.object({
+        positionID: Joi.string(),
+        hiringManagerID: Joi.string(),
+        jobTitle: Joi.string().required(),
+        jobDescription: Joi.string(),
+        requiredSkills: Joi.array().items(Joi.string()),
+        status: Joi.string().valid('Open', 'Closed'),
+        applicationDeadline: Joi.date(),
+        hiredEmployeeID: Joi.string().allow(null).empty(''),
       });
+  
+      // Validate the request body against the schema
+      const { error, value } = schema.validate(req.body, { abortEarly: false });
+  
+      if (error) {
+        const errorMessage = error.details.map((detail) => detail.message).join('; ');
+        return res.status(400).json({ message: errorMessage });
+      }
 
-      await recruitment.save();
-      res.status(200).send(recruitment);
+      const position = await Position.findById(value.positionID);
+  
+      if (!position) {
+        return res.status(404).json({ message: 'Position not found' });
+      }
+  
+     // Check if the hiring manager exists
+      const hiringManager = await Employee.findById(value.hiringManagerID);
+
+      if (!hiringManager) {
+        return res.status(404).json({ message: 'Hiring manager not found' });
+      
+      }
+  
+      // Update the recruitment fields
+      Object.assign(recruitment, value);
+  
+      // Save the updated recruitment
+      const updatedRecruitment = await recruitment.save();
+  
+      res.status(200).json(updatedRecruitment);
     } catch (error) {
-      res.status(400).send({ error: error.message });
+      res.status(500).json({ message: error.message });
     }
   },
 
   // Delete recruitment by ID
   deleteRecruitment: async (req, res) => {
     try {
-      const id = req.params.id;
+      const id = req.body._id;
       const recruitment = await Recruitment.findByIdAndDelete(id);
 
       if (!recruitment) {
@@ -86,7 +154,7 @@ const recruitmentController = {
   // Get position for a recruitment
   getPositionForRecruitment: async (req, res) => {
     try {
-      const recruitmentId = req.params.id;
+      const recruitmentId = req.body._id;
       const recruitment = await Recruitment.findById(recruitmentId);
 
       if (!recruitment) {

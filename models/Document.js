@@ -2,31 +2,26 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const DocumentSchema = new Schema({
-    DocumentID: {
-        type: Number,
-        required: true,
-        unique: true
-    },
-
-    EmployeeID: {
+    employeeID: {
         type: String, 
         ref: 'Employee',
         required: true
     },
 
-    Title: {
+    title: {
         type: String,
         required: true
     },
-    Description: {
+    description: {
         type: String,
         required: true
     },
-    UploadDate: {
+    uploadDate: {
         type: Date,
+        default: Date.now,
         required: true
     },
-    FileUrl: {
+    fileURL: {
         type: String,
         required: true
     }

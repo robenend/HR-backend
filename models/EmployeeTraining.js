@@ -2,36 +2,28 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const EmployeeTrainingSchema = new Schema({
-  TrainingID: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-
-  EmployeeID: {
+  employeeID: {
     type: String,
     ref: "Employee",
-    required: false,
-  },
-
-  Description: {
-    type: String,
     required: true,
   },
-  Trainer: {
+  trainer: {
     type: String,
     ref: "Employee",
-    required: false,
   },
-  StartDate: {
+  startDate: {
     type: Date,
     required: true,
   },
-  EndDate: {
+  endDate: {
     type: Date,
     required: true,
   },
-  TrainingName: {
+  trainingName: {
+    type: String,
+    required: true,
+  },
+  description: {
     type: String,
     required: true,
   },

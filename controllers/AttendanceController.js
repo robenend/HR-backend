@@ -1,74 +1,119 @@
 const Attendance = require('../models/Attendance');
+const Employee = require('../models/Employee')
 
-const getAllAttendances = async (req, res) => {
-    const Attendances = await Attendance.find();
-    if (!Attendances) return res.status(204).json({ 'message': 'No Attendances found.' });
-    res.json(Attendances);
+const statusCheck = (status, checkIn, checkOut, res) => {
+    if(status && status !== "On Leave") {
+        if (!checkIn || !checkOut) {
+          return res.status(400).json({ message : "CheckInDateTime and CheckOutDateTime can't be null." });
+        }
+      } else if (status === "On Leave") {
+        checkIn = null;
+        checkOut = null;
+    }
+    return {checkIn, checkOut}
 }
 
+const getAllAttendances = async (req, res) => {
+    const attendances = await Attendance.find();
+    if (!attendances) return res.status(204).json({ message: 'No attendances found.' });
+    res.status(200).json(attendances);
+}
+
+
 const createNewAttendance = async (req, res) => {
-    if (!req?.body?.AttendanceID || !req?.body?.EmployeeID || !req?.body?.CheckInDateTime || !req?.body?.CheckOutDateTime) {
-        return res.status(400).json({ 'message': 'Check the required input fields.' });
+    const {employeeID, checkInDateTime, checkOutDateTime, recordedBy, status, notes} = req.body || {};
+
+    if (!employeeID || !recordedBy || !status) {
+        return res.status(400).json({ message : 'Check the required input fields.' });
     }
 
-    try {
-        const result = await Attendance.create({
-            AttendanceID: req.body.AttendanceID,
-            EmployeeID: req.body.EmployeeID,
-            CheckInDateTime: req.body.CheckInDateTime,
-            CheckOutDateTime: req.body.CheckOutDateTime
-        });
+    if(!mongoose.Types.ObjectId.isValid(employeeID)){
+        return res.status(400).json({ message : 'Invalid employeeID'})
+    }
 
-        res.status(201).json(result);
-    } catch (error) {
-        res.status(500).json({message: error.message});
+    const {checkIn, checkOut} = statusCheck(status, checkInDateTime, checkOutDateTime, res)
+
+    if (req.user && req.role == "attendanceAdmin"){
+        try {
+            const result = await Attendance.create({employeeID, checkIn, checkOut, recordedBy, status, notes});
+            res.status(201).json(result);
+         
+        }catch (err) {
+            res.status(500).json({message: err.message});
+
+        }
 
     }
 }
 
 const updateAttendance = async (req, res) => {
-    if (!req?.body?.AttendanceID) {
-        return res.status(400).json({ 'message': 'AttendanceID parameter is required.' });
+    if (!req?.body?._id) {
+        return res.status(400).json({ message : '_id is not valid.' });
     }
 
-    const attendance = await Attendance.findOne({ AttendanceID: req.body.AttendanceID }).exec();
-    if (!attendance) {
-        return res.status().json({ "message": `No Attendance matches ID ${req.body.CourseID}.` });
+    if(!mongoose.Types.ObjectId.isValid(req.body.employeeID)){
+        return res.status(400).json({ message : 'Invalid employeeID'})
+    }
+    
+
+    try{
+
+        const updates = req.body;
+
+        const attendance = await Attendance.findById(req.body._id);
+        const {checkIn, checkOut} = statusCheck(updates.status, updates.checkInDateTime, updates.checkOutDateTime, res)
+    
+        Object.assign(attendance, updates);
+
+        attendance.checkInDateTime = checkIn;
+        attendance.checkOutDateTime = checkOut;
+        
+        await attendance.save();
+
+        res.status(200).json({result})
+
+    }catch(err){
+        return res.status(400).json({message: err.message})
     }
 
-    if (req.body?.AttendanceID) attendance.AttendanceID = req.body.AttendanceID;
-    if (req.body?.EmployeeID) attendance.EmployeeID = req.body.EmployeeID;
-    if (req.body?.CheckInDateTime) attendance.CheckInDateTime = req.body.CheckInDateTime;
-    if (req.body?.CheckOutDateTime) attendance.CheckOutDateTime = req.body.CheckOutDateTime;
-    const result = await attendance.save();
-    res.json(result);
 }
 
+const getAllOrders = async (req, res) => {
+    try {
+      const orders = await Order.find();
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+  
 const deleteAttendance = async (req, res) => {
-    if (!req?.body?.AttendanceID) return res.status(400).json({ 'message': 'AttendanceID required.' });
+    if (!req?.body?._id) return res.status(400).json({ message : '_id is not valid.' });
 
-    const attendance = await Attendance.findOne({ AttendanceID: req.body.AttendanceID }).exec();
+    const attendance = await Attendance.findOne({ _id: req.body._id }).exec();
     if (!attendance) {
-        return res.status(204).json({ "message": `No Attendance matches ID ${req.body.AttendanceID}.` });
+        return res.status(204).json({ message: `No attendance is found with id: ${req.body._id}.` });
     }
-    const result = await Attendance.deleteOne(); //{ _id: req.body.id }
-    res.json(result);
+    
+    const result = await attendance.deleteOne(); //{ _id: req.body.id }
+    res.status(204).json({message: "deleted successfully"});
 }
+
 
 const getAttendance = async (req, res) => {
-    if (!req?.params?.id) return res.status(400).json({ 'message': 'AttendanceID required.' });
+    if (!req?.body?._id) return res.status(400).json({ message : '_id not valid.' });
 
-    const attendance = await Attendance.findOne({ AttendanceID: req.params.id }).exec();
+    const attendance = await Attendance.findOne({ _id: req.body._id }).exec();
     if (!attendance) {
-        return res.status(204).json({ "message": `No Attendance matches ID ${req.params.id}.` });
+        return res.status(204).json({ message: `No attendance matches _id ${req.body._id}.` });
     }
     res.json(attendance);
 }
 
 module.exports = {
     getAllAttendances,
+    getAttendance,
     createNewAttendance,
     updateAttendance,
-    deleteAttendance,
-    getAttendance
+    deleteAttendance
 }

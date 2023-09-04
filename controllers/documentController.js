@@ -1,28 +1,30 @@
 const Document = require('../models/Document');
-
+const Employee = require('../models/Employee')
+const handleFileUpload = require('./uploadController')
 
 const getAllDocuments = async (req, res) => {
-    const Documents = await Document.find();
-    if (!Documents) return res.status(204).json({ 'message': 'No Documents found.' });
-    res.json(Documents);
+
+    const documents = await Document.find();
+    if (!documents) return res.status(204).json({ message: 'No Documents found.' });
+    res.json(documents);
 }
 
 const createNewDocument = async (req, res) => {
-    if (!req?.body?.DocumentID || !req?.body?.EmployeeID || !req?.body?.Title || !req?.body?.Description|| !req?.body?.FileUrl) {
-        return res.status(400).json({ 'message': 'Input fields are required' });
+    if (!req?.body?.employeeID || !req?.body?.title || !req?.body?.description|| !req?.body?.fileURL) {
+        return res.status(400).json({ message : 'Check the required Input Fields' });
     }
-    try {
-        const date = new Date()
-        const result = await Document.create({
-            DocumentID: req.body.DocumentID,
-            EmployeeID: req.body.EmployeeID,
-            Title: req.body.Title,
-            Description: req.body.Description,
-            UploadDate: Date.now(),
-            FileUrl: req.body.FileUrl
-        });
 
-        res.status(201).json(result);
+    if(!mongoose.Types.ObjectId.isValid(req.body.employeeID)){
+        return res.status(400).json({ message : 'Invalid employeeID'})
+    }
+
+    try {
+
+        const result = await Document.create(req.body);
+
+        const uploadRes = handleFileUpload(req, res);
+        res.status(201).json({result, uploadRes});
+
     } catch (error) {
         res.status(500).json({message: error.message});
 
@@ -30,51 +32,61 @@ const createNewDocument = async (req, res) => {
 }
 
 const updateDocument = async (req, res) => {
-    if (!req?.body?.DocumentID) {
+    if (!req?.body?._id) {
         return res.status(400).json({ 'message': 'DocumentID parameter is required.' });
     }
     // const Updates = Object.keys(req.body);
-    const document = await Document.findOne({ DocumentID: req.body.DocumentID }).exec();
+    const document = await Document.findOne({ _id: req.body._id }).exec();
 
     if (!document) {
-        return res.status(404).json({ "message": `No Document matches ID ${req.body.DocumentID}.` });
+        return res.status(404).json({ message : `No Document matches _id: ${req.body._id}.` });
+    }
+    
+    if(!mongoose.Types.ObjectId.isValid(req.body.employeeID)){
+        return res.status(400).json({ message : 'Invalid employeeID'})
     }
 
-    if (req.body?.DocumentID) document.DocumentID = req.body.DocumentID;
-    if (req.body?.EmployeeID) document.EmployeeID = req.body.EmployeeID;
-    if (req.body?.Description) document.Title = req.body.Title;
-    if (req.body?.Description) document.Description = req.body.Description;
-    if (req.body?.FileUrl) document.FileUrl = req.body.FileUrl;
-    const result = await document.save();
+    const uploadDate = Date.now()
+
+    let result = await Attendance.updateOne(
+        { _id: req.body._id },
+        { $set: {...req.body, uploadDate}}
+    )
 
     res.json(result);
 }
 
-const deleteDocument = async (req, res) => {
-    if (!req?.body?.DocumentID) return res.status(400).json({ 'message': 'DocumentID required.' });
 
-    const document = await Document.findOne({ DocumentID: req.body.DocumentID }).exec();
+const deleteDocument = async (req, res) => {
+    if (!req?.body?._id) return res.status(400).json({ message: 'Document _id required.' });
+
+    const document = await Document.findById(req.body._id);
     if (!document) {
-        return res.status(204).json({ "message": `No Document matches ID ${req.body.DocumentID}.` });
+        return res.status(204).json({ message : `No Document matches _id ${req.body._id}.` });
     }
     const result = await document.deleteOne(); //{ _id: req.body.id }
     res.json(result);
 }
 
-const getDocument = async (req, res) => {
-    if (!req?.params?.id) return res.status(400).json({ 'message': 'DocumentID required.' });
 
-    const document = await Document.findOne({ DocumentID: req.params.id }).exec();
+const getDocument = async (req, res) => {
+    if (!req?.body?._id) return res.status(400).json({ 'message': 'Document _id required.' });
+    
+    const document = await Document.findById(req.body._id)
+    const employee = await Employee.findById(document.employeeID);
+
     if (!document) {
-        return res.status(204).json({ "message": `No Document matches ID ${req.params.id}.` });
+        return res.status(204).json({ "message": `No Document matches _id ${req.body._id}.` });
     }
-    res.json(document);
+    
+    res.status(200).json({document, employee});
 }
+
 
 module.exports = {
     getAllDocuments,
+    getDocument,
     createNewDocument,
     updateDocument,
-    deleteDocument,
-    getDocument
+    deleteDocument
 }

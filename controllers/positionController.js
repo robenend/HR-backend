@@ -1,17 +1,38 @@
 const Position = require('../models/Position');
 const Recruitment = require('../models/Recruitment')
 const Employee = require('../models/Employee');
+const Joi = require('joi');
 
 const positionController = {
   // Create a new position
   createPosition: async (req, res) => {
     try {
-      const positionData = req.body;
-      const position = new Position(positionData);
-      await position.save();
-      res.status(201).send(position);
+      const { positionName, description } = req.body;
+  
+      // Define a Joi schema for validation
+      const schema = Joi.object({
+        positionName: Joi.string().required(),
+        description: Joi.string(),
+      });
+  
+      // Validate the request body against the schema
+      const { error, value } = schema.validate(req.body, { abortEarly: false });
+  
+      if (error) {
+        const errorMessage = error.details.map((detail) => detail.message).join('; ');
+        return res.status(400).json({ message: errorMessage });
+      }
+  
+      // Create a new position
+      const position = new Position({
+        positionName: value.positionName,
+        description: value.description,
+      });
+  
+      const savedPosition = await position.save();
+      res.status(201).json(savedPosition);
     } catch (error) {
-      res.status(400).send({ error: error.message });
+      res.status(500).json({ message: error.message });
     }
   },
 
@@ -27,46 +48,53 @@ const positionController = {
 
   // Get position by ID
   getPositionById: async (req, res) => {
-    const id = req.params.id;
-
     try {
-      const position = await Position.findById(id);
+      const positionId = req.body._id;
+      const position = await Position.findById(positionId);
+
       if (!position) {
-        return res.status(404).send({ error: 'Position not found' });
+        return res.status(404).json({ message: 'Position not found' });
       }
-      res.status(200).send(position);
+
+      res.json(position);
+
     } catch (error) {
-      res.status(500).send({ error: 'Server Error' });
+      res.status(500).json({ message: error.message });
     }
   },
 
   // Update position by ID
   updatePosition: async (req, res) => {
     try {
-      const id = req.params.id;
-      const updates = Object.keys(req.body);
+      const id = req.body._id;
+      const existingPosition = await Position.findById(id);
 
-      const allowedUpdates = ['positionName', 'description'];
-      const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-
-      if (!isValidOperation) {
-        return res.status(400).send({ error: 'Invalid updates' });
+      if (!existingPosition) {
+        return res.status(404).json({ message: 'Position not found' });
       }
-
-      const position = await Position.findById(id);
-
-      if (!position) {
-        return res.status(404).send({ error: 'Position not found' });
-      }
-
-      updates.forEach(update => {
-        position[update] = req.body[update];
+  
+      // Define a Joi schema for validation
+      const schema = Joi.object({
+        positionName: Joi.string().required(),
+        description: Joi.string(),
       });
-
-      await position.save();
-      res.status(200).send(position);
+  
+      // Validate the request body against the schema
+      const { error, value } = schema.validate(req.body, { abortEarly: false });
+  
+      if (error) {
+        const errorMessage = error.details.map((detail) => detail.message).join('; ');
+        return res.status(400).json({ message: errorMessage });
+      }
+  
+      // Update the position
+      existingPosition.positionName = value.positionName;
+      existingPosition.description = value.description;
+  
+      const updatedPosition = await existingPosition.save();
+      res.json(updatedPosition);
     } catch (error) {
-      res.status(400).send({ error: error.message });
+      res.status(500).json({ message: error.message });
     }
   },
 
@@ -88,7 +116,7 @@ const positionController = {
 
   // Get employees for a position
   getEmployeesForPosition: async (req, res) => {
-    const positionId = req.params.id;
+    const positionId = req.body._id;
 
     try {
       const employees = await Employee.find({ positionID: positionId });
@@ -100,7 +128,7 @@ const positionController = {
 
   // Get recruitments for a position
   getRecruitmentsForPosition: async (req, res) => {
-    const positionId = req.params.id;
+    const positionId = req.body._id;
 
     try {
       const recruitments = await Recruitment.find({ positionID: positionId });

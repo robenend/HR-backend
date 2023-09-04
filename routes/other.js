@@ -6,7 +6,7 @@ const DepartmentController = require("../controllers/DepartmentController");
 const EmployeeTrainingController = require("../controllers/EmployeeTrainingController");
 const HistoryController = require("../controllers/HistoryController");
 const leaveRequestController = require('../controllers/LeaveRequestController');
-
+const handleFileUpload = require('../controllers/uploadController')
 const router = express.Router();
 
 //payrole
@@ -47,9 +47,6 @@ router.patch('/leave-requests/:id', leaveRequestController.updateLeaveRequest);
 router.delete('/leave-requests/:id', leaveRequestController.deleteLeaveRequest);
 router.get('/employees/:employeeId/leave-requests', leaveRequestController.getLeaveRequestsForEmployee);
 
-module.exports = router;
-
-
 //History
 router.post("/history", HistoryController.createHistory);
 router.get("/history", HistoryController.getAllHistory);
@@ -57,4 +54,8 @@ router.get("/history/:id", HistoryController.getHistory);
 router.delete("/history", HistoryController.deleteHistory);
 router.put("/history", HistoryController.updateHistory);
 
+
+router.post("/upload", handleFileUpload);
+
 module.exports = router;
+

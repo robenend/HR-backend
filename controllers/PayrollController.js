@@ -1,112 +1,174 @@
 const Payroll = require('../models/Payroll');
 const Attendance = require("../models/Attendance")
+const Joi = require('joi');
 
-const getAllPayrolls = async (req, res) => {
-    const Payrolls = await Payroll.find();
-    if (!Payrolls) return res.status(204).json({ 'message': 'No Payrolls found.' });
-    res.json(Payrolls);
-}
-
-const createNewPayroll = async (req, res) => {
-    if (!req?.body?.PayrollID || !req?.body?.EmployeeID || !req?.body?.PeriodStartDate || !req?.body?.PeriodEndDate || !req?.body?.BasicSalary || !req?.body?.Allowance || !req?.body?.NetSalary) {
-        return res.status(400).json({ 'message': 'Input fields are required' });
+const calculateAbsences = async (attendanceRecords) => {
+    let absences = 0;
+  
+    for (const record of attendanceRecords) {
+      if (!record.CheckInDateTime || !record.CheckOutDateTime) {
+        absences++;
+      }
     }
-    
+  
+    return absences;
+  }
+
+// Create a new payroll
+const createNewPayroll = async (req, res) => {
     try {
-        const attendanceRecords = await Attendance.find({employeeID: req.body.EmployeeID}).exec();
-
-        async function  calculateAbsences(attendanceRecords) {
-            let absences = 0;
-          
-            for (const record of attendanceRecords) {
-              if (!record.CheckInDateTime || !record.CheckOutDateTime) {
-                absences++;
-              }
-            }
-          
-            return absences;
-          }
-
-        const numberOfAbsences = await calculateAbsences(attendanceRecords);
-        console.log('Number of absences:', numberOfAbsences);
-
-        const salaryPerDay = req.body.BasicSalary / 30;
-        const deduction = salaryPerDay * absences;
-        const salary = req.body.Salary + req.body.Allowance - deduction;
-
-        
-        const result = await Payroll.create({
-            PayrollID: req.body.PayrollID,
-            EmployeeID: req.body.EmployeeID,
-            Salary: salary,
-            PeriodStartDate: req.body.PeriodStartDate,
-            PeriodEndDate: req.body.PeriodEndDate,
-            BasicSalary: req.body.BasicSalary,
-            Allowance: req.body.Allowance,
-            Deduction: deduction,
-            NetSalary: salary,
+        // Joi schema for payroll validation
+        const payrollSchema = Joi.object({
+            payrollID: Joi.string().required(),
+            employeeID: Joi.string().required(),
+            salary: Joi.number().min(0),
+            periodStartDate: Joi.date().required(),
+            periodEndDate: Joi.date().min(Joi.ref('periodStartDate')).required().messages({
+                'date.min': 'The period end date must be after the start date.',
+            }),            
+            basicSalary: Joi.number().min(0).required(),
+            allowance: Joi.number().min(0).default(0).required(),
+            deduction: Joi.number().min(0).default(0),
+            netSalary: Joi.number().min(0).required(),
         });
 
+        const payrollData = req.body;
 
-        res.status(201).json(result);
+        // Validate payrollData using the Joi schema
+        const { error } = payrollSchema.validate(payrollData);
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+
+        const employee = await Employee.findOne({ employeeID: payrollData.employeeID });
+        if (!employee) {
+          return res.status(404).json({ message: 'Employee not found.' });
+        }
+
+        // Retrieve attendance records for the employee
+        const attendanceRecords = await Attendance.find({ employeeID: payrollData.employeeID }).exec();
+
+        // Calculate the number of absences
+        const numberOfAbsences = await calculateAbsences(attendanceRecords);
+
+        // Calculate deduction and salary
+        const salaryPerDay = payrollData.basicSalary / 30;
+        const deduction = payrollData.deduction + salaryPerDay * numberOfAbsences;
+        const salary = payrollData.salary + payrollData.allowance - payrollData.deduction;
+
+        payrollData.deduction = deduction;
+        payrollData.salary = salary;
+        
+        // Create a new payroll document
+        const createdPayroll = await Payroll.create(payrollData);
+        res.status(200).json(createdPayroll);
+
     } catch (error) {
-        res.status(500).json({message: error.message});
-
+      res.status(500).json({ message: error.message });
     }
-}
+};
 
+// Joi schema for payroll validation
+const payrollSchema = Joi.object({
+  payrollID: Joi.string(),
+  employeeID: Joi.string(),
+  salary: Joi.number().min(0),
+  periodStartDate: Joi.date(),
+  periodEndDate: Joi.date().min(Joi.ref('periodStartDate')).required().messages({
+    'date.min': 'The period end date must be after the start date.',
+    }),   
+  basicSalary: Joi.number().min(0),
+  allowance: Joi.number().min(0).default(0),
+  deduction: Joi.number().min(0).default(0),
+  netSalary: Joi.number().min(0),
+}).min(1); // At least one field must be present
+
+// Update a payroll
 const updatePayroll = async (req, res) => {
-    if (!req?.body?.PayrollID) {
-        return res.status(400).json({ 'message': 'PayrollID parameter is required.' });
+  try {
+    const payrollId = req.params.payrollId;
+    const updatedPayrollData = req.body;
+
+    // Validate updatedPayrollData using the Joi schema
+    const { error } = payrollSchema.validate(updatedPayrollData);
+
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
     }
-    // const Updates = Object.keys(req.body);
-    // const payroll = await Payroll.findById(req.params.id);
-    const payroll = await Payroll.findOne({ PayrollID: req.body.PayrollID }).exec();
+
+    // Find the payroll document by ID
+    const payroll = await Payroll.findById(payrollId);
+
     if (!payroll) {
-        return res.status(201).json({ "message": `No Payroll matches ID ${req.body.PayrollID}.` });
+      return res.status(404).json({ message: 'Payroll not found.' });
     }
 
-    if (req.body?.PayrollID) payroll.AttendanceID = req.body.AttendanceID;
-    if (req.body?.EmployeeID) payroll.EmployeeID = req.body.EmployeeID;
-    if (req.body?.Salary) payroll.Salary = req.body.Salary;
-    if (req.body?.PeriodStartDate) payroll.PeriodStartDate = req.body.PeriodStartDate;
-    if (req.body?.CheckOutDateTime) payroll.PeriodEndDate = req.body.PeriodEndDate;
-    if (req.body?.CheckOutDateTime) payroll.PeriodEndDate = req.body.PeriodEndDate;
-    if (req.body?.BasicSalary) payroll.BasicSalary = req.body.BasicSalary;
-    if (req.body?.Allowance) payroll.Allowance = req.body.Allowance;
-    if (req.body?.Deduction) payroll.Deduction = req.body.Deduction;
-    if (req.body?.NetSalary) payroll.NetSalary = req.body.NetSalary;
+    // Update the payroll document with the new data
+    Object.assign(payroll, updatedPayrollData);
+    await payroll.save();
 
-    
-    const result = await payroll.save();
-    res.json(result);
-}
+    res.status(200).json(payroll);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
+// Get a single payroll by ID
+const getPayrollByID = async (req, res) => {
+    try {
+      const payrollID = req.body._id;
+  
+      // Find the payroll document by ID
+      const payroll = await Payroll.findById(payrollID);
+  
+      if (!payroll) {
+        return res.status(404).json({ message: 'Payroll not found.' });
+      }
+  
+      res.status.json(payroll);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+};
+  
+
+// Get all payrolls
+const getAllPayrolls = async (req, res) => {
+    try {
+        // Fetch all payrolls
+        const payrolls = await Payroll.find();
+
+        res.json(payrolls);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Delete a payroll
 const deletePayroll = async (req, res) => {
-    if (!req?.body?.PayrollID) return res.status(400).json({ 'message': 'PayrollID required.' });
-
-    const payroll = await Payroll.findOne({ PayrollID: req.body.PayrollID }).exec();
-    if (!payroll) {
-        return res.status(204).json({ "message": `No Payroll matches ID ${req.body.PayrollID}.` });
+    try {
+      const payrollID = req.body._id;
+  
+      // Find the payroll document by ID
+      const payroll = await Payroll.findById(payrollID);
+  
+      if (!payroll) {
+        return res.status(404).json({ message: 'Payroll not found.' });
+      }
+  
+      // Delete the payroll document
+      await payroll.remove();
+  
+      res.status(200).json({ message: 'Payroll deleted successfully.' });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
     }
-    const result = await Payroll.deleteOne(); //{ _id: req.body.id }
-    res.json(result);
-}
-
-const getPayroll = async (req, res) => {
-    if (!req?.params?.id) return res.status(400).json({ 'message': 'PayrollID required.' });
-
-    const payroll = await Payroll.findOne({ PayrollID: req.params.id }).exec();
-    if (!payroll) {
-        return res.status(204).json({ "message": `No Payroll matches ID ${req.params.id}.` });
-    }
-    res.json(payroll);
-}
+  };
 
 module.exports = {
     getAllPayrolls,
     createNewPayroll,
     updatePayroll,
     deletePayroll,
-    getPayroll
+    getPayrollByID
 }
