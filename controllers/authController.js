@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -17,7 +17,7 @@ const handleLogin = async (req, res) => {
             {
                 "UserInfo": {
                     "employeeID": foundUser.employeeID,
-                    "role": role
+                    "role": foundUser.role
                 }
             },
             process.env.ACCESS_TOKEN_SECRET,
@@ -44,8 +44,56 @@ const handleLogin = async (req, res) => {
     }
 }
 
-const getUser = async (req, res) =>{
-     res.json(req.user);
+const handleLogout = async (req, res) => {
+    // On client, also delete the accessToken
+
+    const cookies = req.cookies;
+    if (!cookies?.jwt) return res.sendStatus(204);
+    const refreshToken = cookies.jwt;
+
+    // Is refreshToken in db?
+    const foundUser = await User.findOne({ refreshToken }).exec();
+    if (!foundUser) {
+        res.clearCookie('jwt', { httpOnly: true, sameSite: 'None', secure: true });
+        return res.sendStatus(204);
+    }
+
+    // Delete refreshToken in db
+    foundUser.refreshToken = foundUser.refreshToken.filter(token => token !== refreshToken);    
+    const result = await foundUser.save();
+
+    res.clearCookie('jwt', { httpOnly: true, sameSite: 'None', secure: true });
+    res.sendStatus(204);
 }
 
-module.exports = { handleLogin, getUser };
+const handleRefreshToken = async (req, res, next) => {
+    const cookies = req.cookies;
+    if (!cookies?.jwt) return res.sendStatus(401);
+        const refreshToken = cookies.jwt;
+
+    const foundUser = await User.findOne({ refreshTokens: refreshToken }).exec();
+    if (!foundUser) return res.sendStatus(403); //Forbidden 
+    // evaluate jwt 
+    jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+        (err, decoded) => {
+            if (err || foundUser.employeeID !== decoded.employeeID) return res.sendStatus(403);
+            console.log(foundUser)
+            const role = foundUser.role
+            const accessToken = jwt.sign(
+                {
+                    "UserInfo": {
+                        "employeeID": decoded.employeeID,
+                        "role": role
+                    }
+                },
+                process.env.ACCESS_TOKEN_SECRET,
+                { expiresIn: '30s' }
+            );
+            res.json({ role, accessToken })
+        }
+    );
+}
+
+module.exports = { handleLogin, handleRefreshToken, handleLogout };

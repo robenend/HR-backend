@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 
 const handleRefreshToken = async (req, res, next) => {
@@ -14,7 +14,7 @@ const handleRefreshToken = async (req, res, next) => {
         process.env.REFRESH_TOKEN_SECRET,
         (err, decoded) => {
             if (err || foundUser.employeeID !== decoded.employeeID) return res.sendStatus(403);
-            console.log(foundUser)
+            
             const role = foundUser.role
             const accessToken = jwt.sign(
                 {

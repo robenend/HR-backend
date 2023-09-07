@@ -1,4 +1,4 @@
-const History = require("../models/History");
+const History = require("../models/history");
 const Joi = require('joi');
 
 const getAllHistory = async (req, res) => {

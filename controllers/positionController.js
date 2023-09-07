@@ -1,6 +1,6 @@
-const Position = require('../models/Position');
-const Recruitment = require('../models/Recruitment')
-const Employee = require('../models/Employee');
+const Position = require('../models/position');
+const Recruitment = require('../models/recruitment')
+const Employee = require('../models/employee');
 const Joi = require('joi');
 
 const positionController = {

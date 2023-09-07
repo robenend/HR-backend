@@ -12,7 +12,7 @@ const router = express.Router();
 //payrole
 router.post("/payroll", PayrollController.createNewPayroll);
 router.get("/payroll", PayrollController.getAllPayrolls);
-router.get("/payroll/:id", PayrollController.getPayroll);
+router.get("/payroll/:id", PayrollController.getPayrollByID);
 router.delete("/payroll", PayrollController.deletePayroll);
 router.put("/payroll", PayrollController.updatePayroll);
 

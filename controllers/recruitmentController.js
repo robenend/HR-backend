@@ -1,9 +1,7 @@
 const Joi = require('joi');
-const Recruitment = require('../models/Recruitment');
-const Position = require('../models/Position');
-const Employee = require('../models/Employee');
-const Joi = require('joi');
-
+const Recruitment = require('../models/recruitment');
+const Position = require('../models/position');
+const Employee = require('../models/employee');
 
 const recruitmentController = {
   // Create a new recruitment

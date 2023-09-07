@@ -1,4 +1,4 @@
-const EmployeeTraining = require("../models/EmployeeTraining");
+const EmployeeTraining = require("../models/employeeTraining");
 const Joi = require('joi');
 
 const getAllEmpTrainings = async (req, res) => {

@@ -1,5 +1,5 @@
-const Document = require('../models/Document');
-const Employee = require('../models/Employee')
+const Document = require('../models/document');
+const Employee = require('../models/employee')
 const handleFileUpload = require('./uploadController')
 
 const getAllDocuments = async (req, res) => {

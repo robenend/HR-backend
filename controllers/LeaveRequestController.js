@@ -1,5 +1,5 @@
 const LeaveRequest = require('../models/leaveRequest');
-const Employee = require('../models/Employee');
+const Employee = require('../models/employee');
 
 const leaveRequestController = {
   createLeaveRequest: async (req, res) => {

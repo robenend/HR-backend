@@ -7,7 +7,6 @@ const employeeRouter = require('./routes/employee')
 const positionRouter = require('./routes/position')
 const recruitmentRouter = require('./routes/recruitment')
 const otherRouter = require('./routes/other')
-const payrollRoute = require('./routes/payroll')
 const fileRouter = require('./routes/fileUpload')
 const requestLogger = require('./middleware/requestLogger') 
 const verifyJWT = require('./middleware/verifyJWT') 
@@ -43,10 +42,9 @@ app.use(cookieParser());
 
 app.use('/auth', require('./routes/auth'));
 app.use('/refresh', require('./routes/refresh'));
-app.use('/register', require('./routes/register'));
+// app.use('/register', require('./routes/register'));
 
 app.use(employeeRouter)
-app.use(payrollRoute)
 app.use(positionRouter)
 app.use(recruitmentRouter)
 app.use(otherRouter)

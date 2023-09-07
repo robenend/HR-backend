@@ -1,6 +1,6 @@
-const Rank = require("../models/Rank");
-const Position = require("../models/Position");
-const History = require("../models/History");
+const Rank = require("../models/rank");
+const Position = require("../models/position");
+const History = require("../models/history");
 const Joi = require('joi');
 
 const createNewRank = async (req, res) => {

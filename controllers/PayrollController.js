@@ -1,5 +1,5 @@
-const Payroll = require('../models/Payroll');
-const Attendance = require("../models/Attendance")
+const Payroll = require('../models/payroll');
+const Attendance = require("../models/attendance")
 const Joi = require('joi');
 
 const calculateAbsences = async (attendanceRecords) => {

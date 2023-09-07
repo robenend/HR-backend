@@ -1,12 +1,12 @@
-const { validationResult } = require('express-validator');
-const Employee = require('../models/Employee');
-// const Position = require('../models/Position');
-const Recruitment = require('../models/Recruitment');
-// const Department = require('../models/Department');
-const Document = require('../models/Document');
-const Rank = require('../models/Rank');
-const inputValidator = require('../helpers/inputValidator');
-const Joi = require('joi');
+const mongoose = require('mongoose')
+const { validationResult } = require('express-validator')
+const Employee = require('../models/employee')
+const Recruitment = require('../models/recruitment')
+const Document = require('../models/document')
+const Rank = require('../models/rank')
+const inputValidator = require('../helpers/inputValidator')
+const bcrypt = require('bcrypt')
+const Joi = require('joi')
 
 
 const employeeController = {
@@ -25,7 +25,12 @@ const employeeController = {
         email: Joi.string().email().required(),
         password: Joi.string().required(),
         employmentStatus: Joi.string().required(),
-        rankID: Joi.string().required(),
+        rankID: Joi.string().custom((value, helpers) => {
+          if (!mongoose.Types.ObjectId.isValid(value)) {
+            return helpers.error('Invalid rankID!');
+          }
+          return value;
+        }).required(),
         documents: Joi.array().items(Joi.string()),
         performanceRating: Joi.number().required(),
       });
@@ -34,44 +39,50 @@ const employeeController = {
       
       // check for duplicate employeeID in the db
       const duplicate = await Employee.findOne({employeeID: value.employeeID }).exec();
-      if (duplicate) return res.sendStatus(409); //Conflict 
+      if (duplicate) return res.status(409).json("The ID is associated with another Employee"); //Conflict 
          
       if (error) {
         return res.status(400).send({ message: error.details[0].message });
       }
 
-      if(!mongoose.Types.ObjectId.isValid(value.rankID)){
-        return res.status(400).json({ message : 'Invalid rankID'})
+      const rankExists = await Rank.exists({ _id: value.rankID });
+      if (!rankExists) {
+        return res.status(400).json({ message: 'Rank does not exist' });
       }
 
       if (value.documents && Array.isArray(value.documents)) {
-        for (const document of documents) {
+        for (const document of value.documents) {
           if (!mongoose.Types.ObjectId.isValid(document)) {
             return res.status(400).json({ message: 'Invalid document' });
+          }
+
+          const documentExisted = await Document.exists({ _id: document });
+          if (!documentExisted) {
+            return res.status(400).json({ message: 'Document does not exist' });
           }
         }
       }
 
-      if(inputValidator.validateName(value.firstName)){
+      if(!inputValidator.validateName(value.firstName)){
 
         return res.status(400).json({ message: 'Invalid first name' });
       }
 
-      if (inputValidator.validateName(value.lastName)){
+      if (!inputValidator.validateName(value.lastName)){
         return res.status(400).json({ message: 'Invalid last name' });
 
       }
       
-      if(inputValidator.validateContactNumber(value.contactNumber)){
+      if(!inputValidator.validateContactNumber(value.contactNumber)){
         return res.status(400).json({messge: 'Invalid contact Number.'})
       }
 
-      if(inputValidator.validateEmail(value.email)){
+      if(!inputValidator.validateEmail(value.email)){
         return res.status(400).json({messge: 'Invalid Email'})
       }
 
       //encrypt the password
-      const hashedPwd = await bcrypt.hash(password, 10);
+      const hashedPwd = await bcrypt.hash(value.password, 10);
       value.password = hashedPwd;
 
       const employee = new Employee(value);
@@ -120,7 +131,6 @@ const employeeController = {
   // Update employee by ID
   updateEmployee: async (req, res) => {
     try {
-
       const schema = Joi.object({
         employeeID: Joi.string(),
         firstName: Joi.string(),

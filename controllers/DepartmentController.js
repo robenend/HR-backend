@@ -1,4 +1,4 @@
-const Department = require("../models/Department");
+const Department = require("../models/department");
 
 const getAllDepartment = async (req, res) => {
   const department = await Department.find();
