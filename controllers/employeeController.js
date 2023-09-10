@@ -31,12 +31,12 @@ const employeeController = {
           }
           return value;
         }).required(),
-        documents: Joi.array().items(Joi.string()),
-        performanceRating: Joi.number().required(),
+        documents: Joi.array().items(Joi.string()).optional(),
+        performanceRating: Joi.number().optional(),
       });
       
-      const { error, value } = schema.validate(req.body, { abortEarly: false });
-      
+      const { error, value } = schema.validate(req.body, { abortEarly: false,  allowUnknown: true });
+      // console.log(error)
       // check for duplicate employeeID in the db
       const duplicate = await Employee.findOne({employeeID: value.employeeID }).exec();
       if (duplicate) return res.status(409).json("The ID is associated with another Employee"); //Conflict 
@@ -74,6 +74,7 @@ const employeeController = {
       }
       
       if(!inputValidator.validateContactNumber(value.contactNumber)){
+        console.log("here is the prob")
         return res.status(400).json({messge: 'Invalid contact Number.'})
       }
 
@@ -147,13 +148,13 @@ const employeeController = {
         performanceRating: Joi.number(),
       }).min(1);
 
-      const id = req.body._id;
-      const employee = await Employee.findById(id);
+      const id = req.params.id;
+      const employee = await Employee.findOne({employeeID: id}).exec();
       if (!employee) {
         return res.status(404).send({ error: 'Employee not found' });
       }
 
-      const { error, value } = schema.validate(req.body, { abortEarly: false });
+      const { error, value } = schema.validate(req.body, { abortEarly: false, allowUnknown: true });
       
       if (error) {
         return res.status(400).send({ message: error.details[0].message });
@@ -164,37 +165,34 @@ const employeeController = {
       }
 
       if (value.documents && Array.isArray(value.documents)) {
-        for (const document of documents) {
+        for (const document of value.documents) {
           if (!mongoose.Types.ObjectId.isValid(document)) {
             return res.status(400).json({ message: 'Invalid document' });
           }
         }
       }
 
-      if(value.firstName && inputValidator.validateName(value.firstName)){
+      if(!value.firstName && inputValidator.validateName(value.firstName)){
         return res.status(400).json({ message: 'Invalid first name' });
       }
 
-      if (inputValidator.validateName(value.lastName)){
+      if (!inputValidator.validateName(value.lastName)){
         return res.status(400).json({ message: 'Invalid last name' });
 
       }
       
-      if(value.contactNumber && inputValidator.validateContactNumber(value.contactNumber)){
+      if(!value.contactNumber && inputValidator.validateContactNumber(value.contactNumber)){
         return res.status(400).json({messge: 'Invalid contact Number.'})
       }
 
-      if(value.email && inputValidator.validateEmail(value.email)){
+      if(!value.email && inputValidator.validateEmail(value.email)){
         return res.status(400).json({messge: 'Invalid Email'})
       }
 
-
-      updates.forEach(update => {
-        employee[update] = value[update];
-      });
+      Object.assign(employee, value);
 
       await employee.save();
-      res.status(200).send(employee);
+      res.sendStatus(204)
     } catch (error) {
       console.log(error)
       res.status(400).send({ error: error.message });

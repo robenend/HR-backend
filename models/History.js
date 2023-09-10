@@ -2,18 +2,12 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const HistorySchema = new Schema({
-  RankID: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Rank",
-    required: false,
-  },
-
-  Description: {
+ description: {
     type: String,
     required: true,
   },
 
-  AssignDate: {
+  assignDate: {
     type: Date,
     required: true,
   },

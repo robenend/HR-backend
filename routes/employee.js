@@ -5,16 +5,16 @@ const verifyJWT  = require('../middleware/verifyJWT');
 const router = express.Router();
 
 // Route: Create a new employee
-router.post('/create/employee', verifyJWT, employeeController.createEmployee);
+router.post('/create/employee', employeeController.createEmployee);
 
 // Route: Get all employees
-router.get('/employees', verifyJWT, employeeController.getAllEmployees);
+router.get('/employees', employeeController.getAllEmployees);
 
 // Route: Get employee by ID or employeeID
 router.get('/employees/:identifier', verifyJWT, employeeController.getEmployeeById);
 
 // Route: Update employee by ID
-router.patch('/employees/:id', verifyJWT, employeeController.updateEmployee);
+router.put('/employees/:id', verifyJWT, employeeController.updateEmployee);
 
 // Route: Delete employee by ID
 router.delete('/employees/:id', verifyJWT, employeeController.deleteEmployee);

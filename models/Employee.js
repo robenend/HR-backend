@@ -71,14 +71,20 @@ const employeeSchema = new mongoose.Schema({
   documents: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Document',
+    required: true
   }],
 
   rankID: { 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Rank' 
+    ref: 'Rank',
+    required: true
   },
   
-  performanceRating: { type: Number, min: 0, max: 10 },
+  performanceRating: { 
+    type: Number, 
+    required: false,
+    min: 0, max: 10 },
+    
   joinDate: { 
     type: Date, 
     default: Date.now },
